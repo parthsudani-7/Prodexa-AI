@@ -12,7 +12,7 @@ export default function Landing({ onStart }: LandingProps) {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   const handleLoginRedirect = () => {
-    window.location.href = `${API_BASE}/api/auth/google`;
+    window.location.href = `${API_BASE}/api/auth/google?origin=${encodeURIComponent(window.location.origin)}`;
   };
 
   const handleDemoLogin = async () => {

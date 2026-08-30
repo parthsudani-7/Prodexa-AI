@@ -114,7 +114,19 @@ router.get('/google', (req: Request, res: Response, next) => {
       { expiresIn: '7d' }
     );
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    let clientUrl = (req.query.origin as string) 
+      || (req.headers.referer ? new URL(req.headers.referer).origin : null)
+      || (req.headers.origin as string) 
+      || process.env.CLIENT_URL 
+      || 'http://localhost:5173';
+
+    // If clientUrl is a placeholder like 'your-frontend.vercel.app', fallback safely
+    if (clientUrl.includes('your-frontend') && req.headers.referer) {
+      try {
+        clientUrl = new URL(req.headers.referer).origin;
+      } catch {}
+    }
+
     return res.redirect(
       `${clientUrl}/auth/callback?token=${token}&name=${encodeURIComponent(dummyUser.name)}&avatar=${encodeURIComponent(dummyUser.avatar)}&email=${encodeURIComponent(dummyUser.email)}&plan=${dummyUser.plan}`
     );
@@ -152,7 +164,17 @@ router.get(
       });
     }
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    let clientUrl = (req.query.origin as string) 
+      || (req.headers.referer ? new URL(req.headers.referer).origin : null)
+      || process.env.CLIENT_URL 
+      || 'http://localhost:5173';
+
+    if (clientUrl.includes('your-frontend') && req.headers.referer) {
+      try {
+        clientUrl = new URL(req.headers.referer).origin;
+      } catch {}
+    }
+
     res.redirect(`${clientUrl}/auth/callback?token=${token}&name=${encodeURIComponent(user.name)}&avatar=${encodeURIComponent(user.avatar || '')}&email=${encodeURIComponent(user.email)}&plan=${user.plan}`);
   }
 );
