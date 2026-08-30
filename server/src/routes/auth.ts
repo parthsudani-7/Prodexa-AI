@@ -8,19 +8,13 @@ import { logAuditEvent } from '../services/audit';
 const router = Router();
 
 function getFrontendOrigin(req: Request): string {
-  // 1. Explicit query parameter
-  const originQuery = req.query.origin as string;
-  if (originQuery && !originQuery.includes('google.com') && !originQuery.includes('your-frontend')) {
-    return originQuery.replace(/\/$/, '');
-  }
-
-  // 2. Client Origin header
+  // 1. Client Origin header
   const originHeader = req.headers.origin as string;
   if (originHeader && !originHeader.includes('google.com') && !originHeader.includes('your-frontend')) {
     return originHeader.replace(/\/$/, '');
   }
 
-  // 3. Referer header (must not be Google)
+  // 2. Referer header (must not be Google)
   const referer = req.headers.referer;
   if (referer) {
     try {
@@ -31,14 +25,14 @@ function getFrontendOrigin(req: Request): string {
     } catch {}
   }
 
-  // 4. Environment variable
+  // 3. Environment variable
   const clientEnv = process.env.CLIENT_URL;
   if (clientEnv && !clientEnv.includes('your-frontend') && !clientEnv.includes('google.com')) {
     return clientEnv.replace(/\/$/, '');
   }
 
-  // 5. Default
-  return 'http://localhost:5173';
+  // 4. Default
+  return 'https://prodexa-ai-client.vercel.app';
 }
 
 // Configure Passport Google Strategy
@@ -52,8 +46,8 @@ passport.use(
     async (_accessToken, _refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0]?.value;
-        const name = profile.displayName;
-        const avatar = profile.photos?.[0]?.value;
+        const name = profile.displayName || 'Google User';
+        const avatar = profile.photos?.[0]?.value || '';
         const googleId = profile.id;
 
         if (!email) return done(new Error('No email returned from Google authentication'), undefined);
@@ -69,7 +63,7 @@ passport.use(
             user = await prisma.user.create({
               data: {
                 googleId,
-                name: name || email.split('@')[0],
+                name,
                 email,
                 avatar,
                 role: 'ADMIN',
@@ -79,10 +73,10 @@ passport.use(
               include: { memberships: { include: { organization: true } } }
             });
 
-            const orgSlug = `${(name || 'workspace').toLowerCase().replace(/[^a-z0-9]/g, '-')}-${user.id.substring(0, 6)}`;
+            const orgSlug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${user.id.substring(0, 6)}`;
             const org = await prisma.organization.create({
               data: {
-                name: `${(name || 'My').split(' ')[0]}'s Workspace`,
+                name: `${name.split(' ')[0]}'s Workspace`,
                 slug: orgSlug,
                 plan: 'PRO',
                 memberships: {
@@ -103,7 +97,7 @@ passport.use(
           console.warn('⚠️ [Database Notice] Remote DB unreachable; using graceful session fallback:', dbErr.message);
           user = {
             id: googleId || `usr_${Date.now()}`,
-            name: name || email.split('@')[0],
+            name,
             email,
             avatar,
             role: 'ADMIN',
@@ -120,52 +114,29 @@ passport.use(
   )
 );
 
-// Initiate Google OAuth (with seamless fallback if credentials are not configured)
+// Initiate Real Google OAuth (Always prompts Google account picker)
 router.get('/google', (req: Request, res: Response, next) => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const isRealGoogleKey = Boolean(clientId && clientId.includes('.apps.googleusercontent.com'));
-  const clientUrl = getFrontendOrigin(req);
-
-  if (!isRealGoogleKey) {
-    const dummyUser = {
-      id: 'usr_parth_google',
-      name: 'Parth Sudani',
-      email: 'sudani.parth@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
-      role: 'ADMIN',
-      plan: 'PRO',
-      defaultOrgId: 'org_primary_workspace',
-    };
-
-    const token = jwt.sign(
-      {
-        userId: dummyUser.id,
-        email: dummyUser.email,
-        role: dummyUser.role,
-        plan: dummyUser.plan,
-      },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '7d' }
-    );
-
-    return res.redirect(
-      `${clientUrl}/auth/callback?token=${token}&name=${encodeURIComponent(dummyUser.name)}&avatar=${encodeURIComponent(dummyUser.avatar)}&email=${encodeURIComponent(dummyUser.email)}&plan=${dummyUser.plan}`
-    );
-  }
-
-  passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'], 
+    prompt: 'select_account',
+    session: false 
+  })(req, res, next);
 });
 
 // Google OAuth Callback
 router.get(
   '/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/?auth=failed' }),
+  passport.authenticate('google', { 
+    session: false, 
+    failureRedirect: `${process.env.CLIENT_URL || 'https://prodexa-ai-client.vercel.app'}?auth=failed` 
+  }),
   async (req: Request, res: Response) => {
     const user = req.user as any;
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
+        name: user.name,
         role: user.role,
         plan: user.plan,
       },
@@ -267,9 +238,9 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/demo — Custom & Demo Login for instant user registration
+// POST /api/auth/demo — Generic Demo Login or Custom User Registration
 router.post('/demo', async (req: Request, res: Response) => {
-  const { email = 'sudani.parth@gmail.com', name = 'Parth Sudani' } = req.body;
+  const { email = 'demo.user@prodexa.ai', name = 'Demo User' } = req.body;
 
   try {
     let user: any = await prisma.user.findUnique({

@@ -29,9 +29,9 @@ export default function Landing({ onStart }: LandingProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   
-  // Custom Login Form State
-  const [emailInput, setEmailInput] = useState('sudani.parth@gmail.com');
-  const [nameInput, setNameInput] = useState('Parth Sudani');
+  // Custom Login Form State (Clean empty defaults)
+  const [emailInput, setEmailInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState('');
 
@@ -40,7 +40,7 @@ export default function Landing({ onStart }: LandingProps) {
       const res = await fetch(`${API_BASE}/api/auth/demo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'sudani.parth@gmail.com', name: 'Parth Sudani' })
+        body: JSON.stringify({ email: 'demo.user@prodexa.ai', name: 'Demo User' })
       });
       if (res.ok) {
         const data = await res.json();
@@ -58,15 +58,15 @@ export default function Landing({ onStart }: LandingProps) {
       }
     } catch {}
 
-    localStorage.setItem('user_name', 'Parth Sudani');
-    localStorage.setItem('user_email', 'sudani.parth@gmail.com');
-    localStorage.setItem('user_plan', 'PRO');
+    localStorage.setItem('user_name', 'Demo User');
+    localStorage.setItem('user_email', 'demo.user@prodexa.ai');
+    localStorage.setItem('user_plan', 'DEMO');
     localStorage.setItem('active_org_id', 'org_primary_workspace');
     onStart();
   };
 
   const handleGoogleOAuth = () => {
-    window.location.href = `${API_BASE}/api/auth/google?origin=${encodeURIComponent(window.location.origin)}`;
+    window.location.href = `${API_BASE}/api/auth/google`;
   };
 
   const handleCustomEmailAuth = async (e: React.FormEvent) => {
@@ -103,14 +103,14 @@ export default function Landing({ onStart }: LandingProps) {
         onStart();
         window.location.reload();
       } else {
-        localStorage.setItem('user_name', nameInput.trim() || 'Parth Sudani');
+        localStorage.setItem('user_name', nameInput.trim() || emailInput.split('@')[0]);
         localStorage.setItem('user_email', emailInput.trim());
         localStorage.setItem('user_plan', 'PRO');
         setShowAuthModal(false);
         onStart();
       }
     } catch {
-      localStorage.setItem('user_name', nameInput.trim() || 'Parth Sudani');
+      localStorage.setItem('user_name', nameInput.trim() || emailInput.split('@')[0]);
       localStorage.setItem('user_email', emailInput.trim());
       localStorage.setItem('user_plan', 'PRO');
       setShowAuthModal(false);
@@ -302,7 +302,7 @@ export default function Landing({ onStart }: LandingProps) {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <span>Continue with Google</span>
+                <span>Continue with Google (Select Account)</span>
               </button>
 
               {/* Email Form */}
@@ -322,9 +322,8 @@ export default function Landing({ onStart }: LandingProps) {
                     type="text"
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
-                    placeholder="e.g. Parth Sudani"
+                    placeholder="e.g. Alex Rivera"
                     className="w-full px-3 py-2 text-xs bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-brand"
-                    required
                   />
                 </div>
 
@@ -337,7 +336,7 @@ export default function Landing({ onStart }: LandingProps) {
                     type="email"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="e.g. sudani.parth@gmail.com"
+                    placeholder="e.g. user@company.com"
                     className="w-full px-3 py-2 text-xs bg-surface-elevated border border-border rounded-lg text-text-primary focus:outline-none focus:border-brand"
                     required
                   />
