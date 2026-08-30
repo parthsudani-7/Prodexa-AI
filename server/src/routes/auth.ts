@@ -41,7 +41,10 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID || 'mock_client_id',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'mock_client_secret',
-      callbackURL: '/api/auth/google/callback',
+      callbackURL: process.env.NODE_ENV === 'production'
+        ? 'https://prodexa-ai-x4v5.onrender.com/api/auth/google/callback'
+        : '/api/auth/google/callback',
+      proxy: true,
     },
     async (_accessToken, _refreshToken, profile, done) => {
       try {

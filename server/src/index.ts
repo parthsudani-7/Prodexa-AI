@@ -26,6 +26,9 @@ import prisma from './lib/prisma';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Enable reverse proxy trust (Required for HTTPS on Render/Cloudflare)
+app.set('trust proxy', 1);
+
 // ─── Core Middleware ────────────────────────────────────────────────────────
 app.use(requestIdMiddleware);
 app.use(securityShieldMiddleware);
