@@ -50,6 +50,16 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ─── Health, Liveness & Readiness Probes ────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Prodexa AI — Enterprise Backend API',
+    status: 'online',
+    version: '2.0.0',
+    documentation: '/api/health',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
