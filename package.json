@@ -1,0 +1,18 @@
+{
+  "name": "ai-workforce-productivity-copilot",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "client:install": "npm install --workspace=client",
+    "server:install": "npm install --workspace=server",
+    "install:all": "npm install",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server"
+  }
+}

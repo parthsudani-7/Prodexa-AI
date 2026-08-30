@@ -1,0 +1,90 @@
+import React from 'react';
+
+interface LogoProps {
+  className?: string;
+  size?: number;
+}
+
+export default function ProdexaLogo({ className = '', size = 28 }: LogoProps) {
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 512 512" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <defs>
+        <linearGradient id="mainGradientLogo" x1="80" y1="80" x2="430" y2="430" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#22D3EE"/>
+          <stop offset="0.45" stopColor="#1677FF"/>
+          <stop offset="1" stopColor="#5B21F5"/>
+        </linearGradient>
+
+        <linearGradient id="accentGradientLogo" x1="120" y1="400" x2="410" y2="180" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#B026FF"/>
+          <stop offset="0.5" stopColor="#6D28FF"/>
+          <stop offset="1" stopColor="#EC3CFF"/>
+        </linearGradient>
+
+        <linearGradient id="arrowGradientLogo" x1="190" y1="350" x2="380" y2="190" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#2563EB"/>
+          <stop offset="0.5" stopColor="#4F46E5"/>
+          <stop offset="1" stopColor="#C026FF"/>
+        </linearGradient>
+
+        <filter id="glowLogo" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="8" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <path
+        d="M116 96 H318 C402 96 456 151 456 231 C456 312 400 365 319 365 H257 L257 304 H313 C360 304 391 277 391 231 C391 184 360 157 313 157 H178 L178 397 C178 421 158 440 134 440 C110 440 91 421 91 397 V121 C91 107 102 96 116 96Z"
+        fill="url(#mainGradientLogo)"
+        filter="url(#glowLogo)"
+      />
+
+      <path
+        d="M178 157 H313 C360 157 391 184 391 231 C391 277 360 304 313 304 H257 V365 H319 C400 365 456 312 456 231 C456 151 402 96 318 96 H178V157Z"
+        fill="url(#mainGradientLogo)"
+        opacity="0.72"
+      />
+
+      <path
+        d="M176 350 L176 270 L236 330 L350 216 L350 174 L408 232 L350 290 L350 248 L236 362 Z"
+        fill="url(#arrowGradientLogo)"
+      />
+
+      <path
+        d="M236 330 L350 216 L350 248 L236 362 L176 302 L176 270 Z"
+        fill="#3B82F6"
+        opacity="0.28"
+      />
+
+      <g fill="url(#mainGradientLogo)">
+        <rect x="61" y="137" width="18" height="18" rx="4"/>
+        <rect x="82" y="105" width="13" height="13" rx="3"/>
+        <rect x="108" y="72" width="20" height="20" rx="4"/>
+        <rect x="143" y="91" width="15" height="15" rx="3"/>
+        <rect x="166" y="63" width="10" height="10" rx="2"/>
+        <rect x="47" y="181" width="11" height="11" rx="3"/>
+        <rect x="76" y="205" width="14" height="14" rx="3"/>
+        <rect x="111" y="182" width="20" height="20" rx="4"/>
+        <rect x="137" y="150" width="11" height="11" rx="2"/>
+        <rect x="96" y="238" width="9" height="9" rx="2"/>
+        <rect x="128" y="222" width="14" height="14" rx="3"/>
+      </g>
+
+      <g fill="url(#accentGradientLogo)">
+        <rect x="153" y="249" width="10" height="10" rx="2"/>
+        <rect x="176" y="272" width="8" height="8" rx="2"/>
+        <rect x="137" y="285" width="12" height="12" rx="3"/>
+      </g>
+    </svg>
+  );
+}
