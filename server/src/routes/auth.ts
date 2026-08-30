@@ -7,6 +7,40 @@ import { logAuditEvent } from '../services/audit';
 
 const router = Router();
 
+function getFrontendOrigin(req: Request): string {
+  // 1. Explicit query parameter
+  const originQuery = req.query.origin as string;
+  if (originQuery && !originQuery.includes('google.com') && !originQuery.includes('your-frontend')) {
+    return originQuery.replace(/\/$/, '');
+  }
+
+  // 2. Client Origin header
+  const originHeader = req.headers.origin as string;
+  if (originHeader && !originHeader.includes('google.com') && !originHeader.includes('your-frontend')) {
+    return originHeader.replace(/\/$/, '');
+  }
+
+  // 3. Referer header (must not be Google)
+  const referer = req.headers.referer;
+  if (referer) {
+    try {
+      const parsed = new URL(referer).origin;
+      if (!parsed.includes('google.com') && !parsed.includes('your-frontend')) {
+        return parsed.replace(/\/$/, '');
+      }
+    } catch {}
+  }
+
+  // 4. Environment variable
+  const clientEnv = process.env.CLIENT_URL;
+  if (clientEnv && !clientEnv.includes('your-frontend') && !clientEnv.includes('google.com')) {
+    return clientEnv.replace(/\/$/, '');
+  }
+
+  // 5. Default
+  return 'http://localhost:5173';
+}
+
 // Configure Passport Google Strategy
 passport.use(
   new GoogleStrategy(
@@ -90,13 +124,13 @@ passport.use(
 router.get('/google', (req: Request, res: Response, next) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const isRealGoogleKey = Boolean(clientId && clientId.includes('.apps.googleusercontent.com'));
+  const clientUrl = getFrontendOrigin(req);
 
   if (!isRealGoogleKey) {
-    // Seamless fallback: Log in directly without triggering Google 401 invalid_client
     const dummyUser = {
       id: 'usr_parth_google',
       name: 'Parth Sudani',
-      email: 'parth@prodexa.ai',
+      email: 'sudani.parth@gmail.com',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
       role: 'ADMIN',
       plan: 'PRO',
@@ -114,19 +148,6 @@ router.get('/google', (req: Request, res: Response, next) => {
       { expiresIn: '7d' }
     );
 
-    let clientUrl = (req.query.origin as string) 
-      || (req.headers.referer ? new URL(req.headers.referer).origin : null)
-      || (req.headers.origin as string) 
-      || process.env.CLIENT_URL 
-      || 'http://localhost:5173';
-
-    // If clientUrl is a placeholder like 'your-frontend.vercel.app', fallback safely
-    if (clientUrl.includes('your-frontend') && req.headers.referer) {
-      try {
-        clientUrl = new URL(req.headers.referer).origin;
-      } catch {}
-    }
-
     return res.redirect(
       `${clientUrl}/auth/callback?token=${token}&name=${encodeURIComponent(dummyUser.name)}&avatar=${encodeURIComponent(dummyUser.avatar)}&email=${encodeURIComponent(dummyUser.email)}&plan=${dummyUser.plan}`
     );
@@ -138,7 +159,7 @@ router.get('/google', (req: Request, res: Response, next) => {
 // Google OAuth Callback
 router.get(
   '/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:5173'}?auth=failed` }),
+  passport.authenticate('google', { session: false, failureRedirect: '/?auth=failed' }),
   async (req: Request, res: Response) => {
     const user = req.user as any;
     const token = jwt.sign(
@@ -164,17 +185,7 @@ router.get(
       });
     }
 
-    let clientUrl = (req.query.origin as string) 
-      || (req.headers.referer ? new URL(req.headers.referer).origin : null)
-      || process.env.CLIENT_URL 
-      || 'http://localhost:5173';
-
-    if (clientUrl.includes('your-frontend') && req.headers.referer) {
-      try {
-        clientUrl = new URL(req.headers.referer).origin;
-      } catch {}
-    }
-
+    const clientUrl = getFrontendOrigin(req);
     res.redirect(`${clientUrl}/auth/callback?token=${token}&name=${encodeURIComponent(user.name)}&avatar=${encodeURIComponent(user.avatar || '')}&email=${encodeURIComponent(user.email)}&plan=${user.plan}`);
   }
 );
@@ -256,54 +267,67 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/demo — Quick Demo Login for instant development testing
+// POST /api/auth/demo — Custom & Demo Login for instant user registration
 router.post('/demo', async (req: Request, res: Response) => {
-  const { email = 'parth@prodexa.ai', name = 'Parth Sudani' } = req.body;
+  const { email = 'sudani.parth@gmail.com', name = 'Parth Sudani' } = req.body;
 
   try {
-    let user = await prisma.user.findUnique({
+    let user: any = await prisma.user.findUnique({
       where: { email },
       include: { memberships: { include: { organization: true } } }
-    });
+    }).catch(() => null);
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
+      try {
+        user = await prisma.user.create({
+          data: {
+            name,
+            email,
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
+            role: 'ADMIN',
+            plan: 'PRO',
+            dailyQuota: 1000,
+          },
+          include: { memberships: { include: { organization: true } } }
+        });
+
+        const orgSlug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${user.id.substring(0, 6)}`;
+        const org = await prisma.organization.create({
+          data: {
+            name: `${name.split(' ')[0]}'s Workspace`,
+            slug: orgSlug,
+            plan: 'PRO',
+            memberships: {
+              create: {
+                userId: user.id,
+                role: 'OWNER',
+              }
+            }
+          }
+        });
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { defaultOrgId: org.id }
+        });
+      } catch {
+        user = {
+          id: `usr_${Date.now()}`,
           name,
           email,
           avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
           role: 'ADMIN',
           plan: 'PRO',
-          dailyQuota: 1000,
-        },
-        include: { memberships: { include: { organization: true } } }
-      });
-
-      const orgSlug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${user.id.substring(0, 6)}`;
-      const org = await prisma.organization.create({
-        data: {
-          name: `${name.split(' ')[0]}'s Workspace`,
-          slug: orgSlug,
-          plan: 'PRO',
-          memberships: {
-            create: {
-              userId: user.id,
-              role: 'OWNER',
-            }
-          }
-        }
-      });
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { defaultOrgId: org.id }
-      });
+          defaultOrgId: 'org_primary_workspace',
+        };
+      }
     }
 
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
+        name: user.name,
         role: user.role,
         plan: user.plan,
       },
@@ -320,7 +344,7 @@ router.post('/demo', async (req: Request, res: Response) => {
         avatar: user.avatar,
         role: user.role,
         plan: user.plan,
-        defaultOrgId: user.defaultOrgId,
+        defaultOrgId: user.defaultOrgId || 'org_primary_workspace'
       }
     });
   } catch (err: any) {
